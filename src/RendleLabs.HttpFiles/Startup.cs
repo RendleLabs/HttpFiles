@@ -1,8 +1,10 @@
 ﻿using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
+using System.Text;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.HttpsPolicy;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
@@ -14,6 +16,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using RendleLabs.HttpFiles.Options;
 using RendleLabs.HttpFiles.Services;
+using RendleLabs.AspNetCore.RoutingWithServices;
 
 namespace RendleLabs.HttpFiles
 {
@@ -47,13 +50,7 @@ namespace RendleLabs.HttpFiles
 
             app.UseMiddleware<AuthMiddleware>();
 
-            app.UseRouter(builder =>
-            {
-                builder.MapPut("/put/{**file}", async (request, response, data) =>
-                {
-                    var file = data.GetString("file");
-                });
-            });
+            app.UseRouter(Routes.Configure);
 
             app.UseMvc();
         }

@@ -13,6 +13,7 @@
     <PackageReference Include="JetBrains.Annotations" Version="2018.3.0" />
     <PackageReference Include="Microsoft.AspNetCore.App" />
     <PackageReference Include="Microsoft.AspNetCore.Razor.Design" Version="2.1.2" PrivateAssets="All" />
+    <PackageReference Include="RendleLabs.AspNetCore.RoutingWithServices" Version="1.0.0-alpha1" />
   </ItemGroup>
 
 </Project>

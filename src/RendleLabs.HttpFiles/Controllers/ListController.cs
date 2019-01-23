@@ -13,11 +13,17 @@ namespace RendleLabs.HttpFiles.Controllers
     public class ListController : ControllerBase
     {
         private readonly IDirectories _directories;
-        
-        [HttpGet("{**directory}")]
-        public ActionResult<FileList> Get(string directory, [FromQuery]string pattern)
+
+        public ListController(IDirectories directories)
         {
-            return new FileList {Files = _directories.ListFiles(directory, pattern).ToArray()};
+            _directories = directories;
+        }
+
+        [HttpGet("{*directory}")]
+        public async Task<ActionResult<FileList>> Get(string directory, [FromQuery]string pattern)
+        {
+            var result = await _directories.ListFilesAsync(directory, pattern);
+            return result ?? (ActionResult<FileList>) NotFound();
         }
     }
 }

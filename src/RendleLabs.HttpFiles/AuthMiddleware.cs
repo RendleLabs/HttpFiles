@@ -24,14 +24,17 @@ namespace RendleLabs.HttpFiles
         {
             if (!TryGetHeaders(context.Request.Headers, out var headers))
             {
-                return context.ChallengeAsync("HMAC");
+                context.Response.StatusCode = 401;
+                return Task.CompletedTask;
             }
 
             var hash = headers.authorization.AsSpan().Slice(5);
 
-            if (!_hmacVerification.Verify(headers.timestamp, context.Request.Path.Value, hash))
+            var path = $"{context.Request.Path}{context.Request.QueryString}";
+            if (!_hmacVerification.Verify(headers.timestamp, path, hash))
             {
-                return context.ForbidAsync("HMAC");
+                context.Response.StatusCode = 401;
+                return Task.CompletedTask;
             }
 
             return _next(context);
