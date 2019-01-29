@@ -17,6 +17,7 @@ namespace RendleLabs.HttpFiles
         {
             builder.MapGet<IFiles>("/get/{*file}", GetFile);
             builder.MapPut<IFiles>("/put/{*file}", PutFile);
+            builder.MapDelete<IFiles>("/delete/{*file}", DeleteFile);
         }
 
         private static async Task GetFile(HttpRequest request, HttpResponse response, RouteData routeData, IFiles files)
@@ -52,6 +53,15 @@ namespace RendleLabs.HttpFiles
 
             await files.WriteAsync(file, request.Body, type);
             response.StatusCode = 201;
+        }
+
+        private static Task DeleteFile(HttpRequest request, HttpResponse response, RouteData routeData, IFiles files)
+        {
+            var file = routeData.GetString("file");
+
+            response.StatusCode = files.Delete(file) ? 200 : 404;
+
+            return Task.CompletedTask;
         }
     }
 }

@@ -38,9 +38,9 @@ namespace RendleLabs.HttpFiles.Services
 
             files = files.Select(f => Path.Combine(directory, Path.GetFileName(f)));
 
-            if (Path.PathSeparator != '/')
+            if (Path.DirectorySeparatorChar != '/')
             {
-                files = files.Select(f => f.Replace(Path.PathSeparator, '/'));
+                files = files.Select(f => f.Replace(Path.DirectorySeparatorChar, '/'));
             }
 
             var items = await Task.WhenAll(files.Select(f => CreateFileListItemAsync(f, directory)));
@@ -53,7 +53,7 @@ namespace RendleLabs.HttpFiles.Services
 
         private static async Task<FileListItem> CreateFileListItemAsync(string file, string virtualDirectory)
         {
-            var virtualFile = Path.Combine(virtualDirectory, Path.GetFileName(file)).Replace(Path.PathSeparator, '/');
+            var virtualFile = Path.Combine(virtualDirectory, Path.GetFileName(file)).Replace(Path.DirectorySeparatorChar, '/');
             var path = $"{file}.metadata";
             if (File.Exists(path))
             {

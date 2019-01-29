@@ -13,6 +13,7 @@ namespace RendleLabs.HttpFiles.Services
         Task WriteAsync(string file, Stream requestBody, FileType type);
         bool GetFilePath(string file, out string path);
         Task<FileSource> TryGetFileSource(string file);
+        bool Delete(string file);
     }
 
     public class Files : IFiles
@@ -58,6 +59,25 @@ namespace RendleLabs.HttpFiles.Services
             }
 
             return source;
+        }
+
+        public bool Delete(string file)
+        {
+            var path = Path.Combine(_baseDirectory, file);
+            if (!File.Exists(path))
+            {
+                return false;
+            }
+            
+            File.Delete(path);
+            
+            path = $"{path}._metadata";
+            if (File.Exists(path))
+            {
+                File.Delete(path);
+            }
+            
+            return true;
         }
 
         public ValueTask<string> ReadAsync(string file)
