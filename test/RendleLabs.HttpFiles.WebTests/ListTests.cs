@@ -1,4 +1,6 @@
 using System;
+using System.Collections;
+using System.Collections.Generic;
 using System.IO;
 using System.Net;
 using System.Net.Http;
@@ -43,7 +45,7 @@ namespace RendleLabs.HttpFiles.WebTests
                 Assert.Equal("application/json", response.Content.Headers.ContentType.MediaType);
                 var text = await response.Content.ReadAsStringAsync();
                 var jobj = JObject.Parse(text);
-                Assert.True(jobj.ContainsKey("files"));
+                Assert.True(((IDictionary<string,JToken>)jobj).ContainsKey("files"));
                 if (jobj["files"] is JArray list)
                 {
                     foreach (var token in list)

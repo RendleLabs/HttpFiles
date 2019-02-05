@@ -9,7 +9,6 @@ using RendleLabs.HttpFiles.Services;
 namespace RendleLabs.HttpFiles.Controllers
 {
     [Route("ls")]
-    [ApiController]
     public class ListController : ControllerBase
     {
         private readonly IDirectories _directories;
@@ -20,10 +19,16 @@ namespace RendleLabs.HttpFiles.Controllers
         }
 
         [HttpGet("{*directory}")]
-        public async Task<ActionResult<FileList>> Get(string directory, [FromQuery]string pattern)
+        public async Task<IActionResult> Get(string directory, [FromQuery]string pattern)
         {
             var result = await _directories.ListFilesAsync(directory, pattern);
-            return result ?? (ActionResult<FileList>) NotFound();
+
+            if (result != null)
+            {
+                return Ok(result);
+            }
+
+            return NotFound();
         }
     }
 }

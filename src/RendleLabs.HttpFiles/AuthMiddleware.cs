@@ -1,6 +1,5 @@
 using System;
 using System.Threading.Tasks;
-using JetBrains.Annotations;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Net.Http.Headers;
@@ -8,7 +7,6 @@ using RendleLabs.HttpFiles.Services;
 
 namespace RendleLabs.HttpFiles
 {
-    [UsedImplicitly]
     public sealed class AuthMiddleware
     {
         private readonly RequestDelegate _next;
@@ -28,7 +26,7 @@ namespace RendleLabs.HttpFiles
                 return Task.CompletedTask;
             }
 
-            var hash = headers.authorization.AsSpan().Slice(5);
+            var hash = headers.authorization;
 
             var path = $"{context.Request.Path}{context.Request.QueryString}";
             if (!_hmacVerification.Verify(headers.timestamp, path, hash))

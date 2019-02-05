@@ -4,99 +4,79 @@ using System.Diagnostics;
 using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
-using JetBrains.Annotations;
 using Microsoft.Extensions.Options;
 using RendleLabs.HttpFiles.Options;
 
 namespace RendleLabs.HttpFiles.Services
 {
-    public interface IHmacVerification
-    {
-        bool Verify(ReadOnlySpan<char> timestamp, ReadOnlySpan<char> data, ReadOnlySpan<char> providedHash);
-    }
-
     public class HmacVerification : IHmacVerification
     {
         private const int MaximumHashLength = 64;
-        private readonly string _algorithmName;
         private readonly byte[] _key;
-        private readonly int _maxTimestampMargin = 60;
+        private readonly int _maxTimestampMargin;
 
         // ReSharper disable AssignNullToNotNullAttribute
-        public HmacVerification(IOptions<SecurityOptions> options) : this(options.Value?.AlgorithmName, options.Value?.Key, options.Value?.MaxTimestampMargin)
+        public HmacVerification(IOptions<SecurityOptions> options) : this(options.Value?.Key, options.Value?.MaxTimestampMargin)
         // ReSharper restore AssignNullToNotNullAttribute
         {
         }
 
-        public HmacVerification([NotNull] string algorithmName, [NotNull] string key, int? maxTimestampMargin)
+        public HmacVerification(string key, int? maxTimestampMargin)
         {
             if (key == null) throw new ArgumentNullException(nameof(key));
-            _algorithmName = algorithmName ?? throw new ArgumentNullException(nameof(algorithmName));
             _maxTimestampMargin = maxTimestampMargin ?? 60;
             _key = Convert.FromBase64String(key);
         }
 
-        public bool Verify(ReadOnlySpan<char> timestamp, ReadOnlySpan<char> data, ReadOnlySpan<char> providedHash)
+        public bool Verify(string timestamp, string data, string providedHash)
         {
             if (!CheckTimestamp(timestamp)) return false;
 
-            using (var providedHashBytes = MemoryPool<byte>.Shared.Rent(MaximumHashLength))
+            var providedHashBytes = Convert.FromBase64String(providedHash);
+
+            using (var dataBytes = MemoryPool<byte>.Shared.Rent(data.Length * 4 + timestamp.Length))
             {
-                if (!Convert.TryFromBase64Chars(providedHash, providedHashBytes.Memory.Span, out int providedHashByteCount))
-                {
-                    return false;
-                }
+                var dataSpan = CreatePlaintext(timestamp, data, dataBytes.Memory.Span);
 
-                var providedHashSpan = providedHashBytes.Memory.Span.Slice(0, providedHashByteCount);
-
-                using (var dataBytes = MemoryPool<byte>.Shared.Rent(data.Length * 4 + timestamp.Length))
-                {
-                    var dataSpan = CreatePlaintext(timestamp, data, dataBytes.Memory.Span);
-
-                    return CompareHash(dataSpan, providedHashSpan);
-                }
+                return CompareHash(dataSpan, providedHashBytes);
             }
         }
 
-        private static Span<byte> CreatePlaintext(ReadOnlySpan<char> timestamp, ReadOnlySpan<char> data, Span<byte> target)
+        private static Span<byte> CreatePlaintext(string timestamp, string data, Span<byte> target)
         {
-            int timestampByteCount = Encoding.UTF8.GetBytes(timestamp, target);
-            var dataSpan = target.Slice(timestampByteCount);
-            int dataByteCount = Encoding.UTF8.GetBytes(data, dataSpan);
-            return target.Slice(0, timestampByteCount + dataByteCount);
+            var timestampBytes = Encoding.UTF8.GetBytes(timestamp);
+            var s = target;
+            timestampBytes.AsSpan().CopyTo(s);
+            s = s.Slice(timestampBytes.Length);
+            var dataBytes = Encoding.UTF8.GetBytes(data);
+            dataBytes.AsSpan().CopyTo(s);
+            return target.Slice(0, timestampBytes.Length + dataBytes.Length);
         }
 
         private bool CompareHash(Span<byte> dataSpan, Span<byte> providedHashSpan)
         {
-            using (var computedHashBytes = MemoryPool<byte>.Shared.Rent(MaximumHashLength))
+            using (var hash = new HMACSHA256(_key))
             {
-                using (var hash = KeyedHashAlgorithm.Create(_algorithmName))
+                var computedHash = hash.ComputeHash(dataSpan.ToArray());
+
+                if (providedHashSpan.Length != computedHash.Length)
                 {
-                    hash.Key = _key;
-
-                    var computedHash = computedHashBytes.Memory.Span;
-
-                    hash.TryComputeHash(dataSpan, computedHash, out int computedHashByteCount);
-                    
-                    if (providedHashSpan.Length != computedHashByteCount)
-                    {
-                        return false;
-                    }
-
-                    computedHash = computedHash.Slice(0, computedHashByteCount);
-
-                    return providedHashSpan.SequenceEqual(computedHash);
+                    return false;
                 }
+
+                return providedHashSpan.SequenceEqual(computedHash);
             }
         }
 
-        private bool CheckTimestamp(ReadOnlySpan<char> timestamp)
+        private bool CheckTimestamp(string timestamp)
         {
             if (!DateTimeOffset.TryParse(timestamp, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal, out var time))
             {
                 return false;
             }
 
+            var now = DateTimeOffset.UtcNow;
+            
             if (Math.Abs(DateTimeOffset.UtcNow.ToUnixTimeSeconds() - time.ToUnixTimeSeconds()) > _maxTimestampMargin)
             {
                 return false;
